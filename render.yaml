@@ -1,0 +1,39 @@
+services:
+  - type: web
+    name: restaurant-reservation
+    env: node
+    plan: free
+    buildCommand: npm run build
+    startCommand: npm start
+    envVars:
+      - key: NODE_ENV
+        value: production
+      - key: PORT
+        value: 3001
+      # Müssen im Render-Dashboard manuell gesetzt werden:
+      - key: DATABASE_URL
+        sync: false
+      - key: ADMIN_PASSWORD
+        sync: false
+      - key: BASE_URL
+        sync: false
+      - key: RESTAURANT_NAME
+        sync: false
+      - key: RESTAURANT_ADDRESS
+        sync: false
+      - key: RESTAURANT_PHONE
+        sync: false
+      - key: RESTAURANT_MAPS_URL
+        sync: false
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_SECURE
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false

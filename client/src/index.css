@@ -1,0 +1,65 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  body {
+    @apply bg-ink-900 text-white antialiased;
+    font-feature-settings: 'cv02', 'cv03', 'cv04', 'cv11';
+  }
+  ::selection {
+    @apply bg-gold/30 text-white;
+  }
+}
+
+@layer components {
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 bg-gold text-ink-900 font-semibold rounded-lg
+           hover:bg-gold-light transition-all disabled:opacity-40 disabled:cursor-not-allowed
+           focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-ink-900
+           shadow-lg shadow-gold/10 hover:shadow-gold/20;
+  }
+  .btn-secondary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 bg-transparent text-gold font-semibold rounded-lg
+           border border-gold/40 hover:border-gold hover:bg-gold/10 transition-colors
+           focus:outline-none focus:ring-2 focus:ring-gold focus:ring-offset-2 focus:ring-offset-ink-900;
+  }
+  .btn-ghost {
+    @apply inline-flex items-center justify-center gap-2 px-4 py-2 text-gray-400 hover:text-white transition-colors;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-3 bg-wine text-white font-semibold rounded-lg
+           hover:bg-wine-light transition-colors disabled:opacity-40;
+  }
+  .input {
+    @apply w-full px-4 py-3 bg-ink-700 border border-ink-500 text-white rounded-lg
+           placeholder-gray-500 focus:outline-none focus:border-gold focus:ring-1 focus:ring-gold transition;
+  }
+  .label {
+    @apply block text-sm font-medium text-gray-300 mb-2;
+  }
+  .card {
+    @apply bg-ink-800 border border-ink-500 rounded-xl p-6;
+  }
+  .card-interactive {
+    @apply card cursor-pointer hover:border-gold/60 transition-all;
+  }
+  .chip {
+    @apply inline-flex items-center px-3 py-1 rounded-full text-xs font-medium;
+  }
+}
+
+.scrollbar-thin::-webkit-scrollbar { width: 6px; height: 6px; }
+.scrollbar-thin::-webkit-scrollbar-track { background: transparent; }
+.scrollbar-thin::-webkit-scrollbar-thumb { background: #404040; border-radius: 3px; }
+.scrollbar-thin::-webkit-scrollbar-thumb:hover { background: #d4af37; }
+
+/* Hero gradient subtle accent */
+.hero-gradient {
+  background:
+    radial-gradient(circle at 20% 0%, rgba(212, 175, 55, 0.08), transparent 40%),
+    radial-gradient(circle at 80% 100%, rgba(122, 31, 43, 0.10), transparent 40%);
+}
