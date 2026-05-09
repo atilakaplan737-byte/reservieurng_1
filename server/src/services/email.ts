@@ -106,7 +106,8 @@ export async function sendCancellationConfirmation(p: CancellationParams): Promi
 
 async function sendMail(to: string, subject: string, html: string, text: string): Promise<void> {
   const t = getTransporter();
-  const from = process.env.SMTP_FROM || `noreply@${(process.env.RESTAURANT_NAME || 'restaurant').toLowerCase().replace(/\s+/g, '')}.local`;
+  const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@example.com';
+  const replyTo = process.env.REPLY_TO || process.env.SMTP_USER || from;
 
   if (!t) {
     const divider = '─'.repeat(70);
@@ -122,18 +123,7 @@ async function sendMail(to: string, subject: string, html: string, text: string)
   }
 
   try {
-    await t.sendMail({
-      from,
-      to,
-      subject,
-      html,
-      text,
-      replyTo: process.env.SMTP_USER || from,
-      headers: {
-        'X-Mailer': 'Reservation-System',
-        'X-Auto-Response-Suppress': 'OOF, AutoReply',
-      },
-    });
+    await t.sendMail({ from, to, subject, html, text, replyTo, envelope: { from: process.env.SMTP_USER, to } });
     console.log(`✉️  Email an ${to} gesendet: ${subject}`);
   } catch (err) {
     console.error(`❌ Email-Versand an ${to} fehlgeschlagen:`, err);
