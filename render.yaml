@@ -39,3 +39,9 @@ services:
         sync: false
       - key: REPLY_TO
         sync: false
+      - key: LEGAL_OWNER_NAME
+        sync: false
+      - key: LEGAL_OWNER_EMAIL
+        sync: false
+      - key: LEGAL_TAX_ID
+        sync: false

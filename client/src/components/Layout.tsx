@@ -12,7 +12,10 @@ export function Layout({ children }: Props) {
   const [info, setInfo] = useState<RestaurantInfo | null>(null);
 
   useEffect(() => {
-    api.getInfo().then(setInfo).catch(() => {});
+    api.getInfo().then(i => {
+      setInfo(i);
+      if (i?.restaurant_name) document.title = `${i.restaurant_name} – Tisch reservieren`;
+    }).catch(() => {});
   }, []);
 
   const isAdmin = location.pathname.startsWith('/admin');
@@ -102,10 +105,15 @@ export function Layout({ children }: Props) {
           </div>
         </div>
         <div className="border-t border-ink-500 py-4 text-center text-xs text-gray-600">
-          © {new Date().getFullYear()} {info?.restaurant_name} ·{' '}
-          <Link to="/admin" className="hover:text-gold">
-            Admin
-          </Link>
+          <div className="flex items-center justify-center gap-3 flex-wrap">
+            <span>© {new Date().getFullYear()} {info?.restaurant_name}</span>
+            <span className="text-ink-500">·</span>
+            <Link to="/impressum" className="hover:text-gold">Impressum</Link>
+            <span className="text-ink-500">·</span>
+            <Link to="/datenschutz" className="hover:text-gold">Datenschutz</Link>
+            <span className="text-ink-500">·</span>
+            <Link to="/admin" className="hover:text-gold">Admin</Link>
+          </div>
         </div>
       </footer>
     </div>

@@ -57,6 +57,21 @@ cron.schedule('*/15 * * * *', async () => {
   }
 });
 
+function validateRequiredEnv(): void {
+  const pwd = process.env.ADMIN_PASSWORD;
+  const isProd = process.env.NODE_ENV === 'production';
+  if (!pwd || pwd.length < 8) {
+    console.error('❌ ADMIN_PASSWORD fehlt oder ist zu kurz (min. 8 Zeichen). Setze einen sicheren Wert.');
+    if (isProd) process.exit(1);
+  }
+  if (isProd && (pwd === 'admin123' || pwd === 'changeme' || pwd === 'password')) {
+    console.error('❌ ADMIN_PASSWORD ist ein bekanntes Default-Passwort. In Production unzulässig.');
+    process.exit(1);
+  }
+}
+
+validateRequiredEnv();
+
 initDb()
   .then(() => {
     app.listen(PORT, () => {

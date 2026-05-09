@@ -18,6 +18,9 @@ router.get('/', async (_req, res) => {
       party_size_threshold: s.party_size_threshold,
       max_party_size_online: s.max_party_size_online,
       cancellation_deadline_hours: s.cancellation_deadline_hours,
+      legal_owner_name: process.env.LEGAL_OWNER_NAME || '',
+      legal_owner_email: process.env.LEGAL_OWNER_EMAIL || s.contact_email || '',
+      legal_tax_id: process.env.LEGAL_TAX_ID || '',
     });
   } catch (err) {
     console.error('info error', err);

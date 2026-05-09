@@ -10,6 +10,9 @@ export interface RestaurantInfo {
   party_size_threshold: number;
   max_party_size_online: number;
   cancellation_deadline_hours: number;
+  legal_owner_name?: string;
+  legal_owner_email?: string;
+  legal_tax_id?: string;
 }
 
 export interface Slot {
