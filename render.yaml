@@ -19,6 +19,9 @@ services:
         sync: false
       - key: ADMIN_PASSWORD
         sync: false
+      # Secret für /api/cron/run (externer Scheduler triggert Erinnerungen)
+      - key: CRON_SECRET
+        sync: false
       - key: BASE_URL
         sync: false
       - key: RESTAURANT_NAME

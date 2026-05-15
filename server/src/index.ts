@@ -6,12 +6,12 @@ import express from 'express';
 import 'express-async-errors'; // leitet abgelehnte Promises aus async-Handlern an die Error-Middleware
 import cors from 'cors';
 import cron from 'node-cron';
-import { initDb, getDb } from './db/database';
+import { initDb } from './db/database';
 import infoRouter from './routes/info';
 import availabilityRouter from './routes/availability';
 import reservationsRouter from './routes/reservations';
 import adminRouter from './routes/admin';
-import { processReminders } from './services/reminders';
+import { processReminders, cleanupExpiredAdminSessions } from './services/reminders';
 import { verifyEmailSetup } from './services/email';
 
 const app = express();
@@ -23,6 +23,31 @@ app.use(express.json({ limit: '256kb' }));
 // Health-Check – auch als Ziel für einen externen Keep-Alive-Ping (Render Free
 // schläft sonst ein und die Reminder-/Cleanup-Cronjobs laufen nicht).
 app.get('/api/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
+
+// Extern getriggerter Cron-Lauf: ein externer Scheduler (z.B. cron-job.org) ruft
+// das alle ~15 Min auf. Der HTTP-Request weckt Render aus dem Sleep UND verschickt
+// fällige Erinnerungen + räumt abgelaufene Sessions auf – unabhängig davon, ob der
+// interne node-cron lief. Per CRON_SECRET abgesichert.
+app.all('/api/cron/run', async (req, res) => {
+  const secret = process.env.CRON_SECRET;
+  if (!secret) {
+    res.status(503).json({ error: 'CRON_SECRET nicht gesetzt – Endpoint deaktiviert' });
+    return;
+  }
+  const provided = req.get('x-cron-key') || (req.query.key as string | undefined);
+  if (provided !== secret) {
+    res.status(401).json({ error: 'Ungültiger Cron-Key' });
+    return;
+  }
+  try {
+    const reminders = await processReminders();
+    const sessionsCleaned = await cleanupExpiredAdminSessions();
+    res.json({ ok: true, reminders, sessionsCleaned, time: new Date().toISOString() });
+  } catch (err) {
+    console.error('❌ Cron-Run fehlgeschlagen:', err);
+    res.status(500).json({ error: 'Cron-Run fehlgeschlagen' });
+  }
+});
 
 app.use('/api/info', infoRouter);
 app.use('/api/availability', availabilityRouter);
@@ -41,14 +66,11 @@ app.use((err: any, _req: express.Request, res: express.Response, _next: express.
   res.status(500).json({ error: 'Interner Serverfehler' });
 });
 
-// Tägliche Bereinigung abgelaufener Admin-Sessions
+// Tägliche Bereinigung abgelaufener Admin-Sessions (Fallback; primär via /api/cron/run)
 cron.schedule('0 3 * * *', async () => {
   try {
-    const db = getDb();
-    const result = await db.query('DELETE FROM admin_sessions WHERE expires_at < NOW()');
-    if (result.rowCount && result.rowCount > 0) {
-      console.log(`🧹 ${result.rowCount} abgelaufene Admin-Session(s) bereinigt`);
-    }
+    const n = await cleanupExpiredAdminSessions();
+    if (n > 0) console.log(`🧹 ${n} abgelaufene Admin-Session(s) bereinigt`);
   } catch (err) {
     console.error('Cron-Cleanup-Fehler:', err);
   }

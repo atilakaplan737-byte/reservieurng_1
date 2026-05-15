@@ -1,7 +1,14 @@
 import { getDb } from '../db/database';
 import { sendReminder } from './email';
 
-export async function processReminders(): Promise<void> {
+/** Löscht abgelaufene Admin-Sessions. Gibt die Anzahl gelöschter Zeilen zurück. */
+export async function cleanupExpiredAdminSessions(): Promise<number> {
+  const db = getDb();
+  const result = await db.query('DELETE FROM admin_sessions WHERE expires_at < NOW()');
+  return result.rowCount ?? 0;
+}
+
+export async function processReminders(): Promise<{ sent24: number; sent4: number }> {
   const db = getDb();
   const now = new Date();
 
@@ -70,4 +77,5 @@ export async function processReminders(): Promise<void> {
   if (sent24 > 0 || sent4 > 0) {
     console.log(`⏰ Reminder versendet: ${sent24}× 24h, ${sent4}× 4h`);
   }
+  return { sent24, sent4 };
 }
