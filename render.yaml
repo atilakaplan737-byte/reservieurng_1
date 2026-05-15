@@ -29,6 +29,9 @@ services:
         sync: false
       - key: RESTAURANT_MAPS_URL
         sync: false
+      # Bevorzugter E-Mail-Weg auf Render (SMTP wird dort blockiert):
+      - key: BREVO_API_KEY
+        sync: false
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT

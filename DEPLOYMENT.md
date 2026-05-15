@@ -76,14 +76,16 @@ Im Service-Dashboard → **Environment**:
 | `RESTAURANT_ADDRESS` | z. B. `Hauptstraße 1, 12345 Stadt` |
 | `RESTAURANT_PHONE` | z. B. `+49 30 12345678` |
 | `RESTAURANT_MAPS_URL` | Google-Maps-Link |
-| `SMTP_HOST` | `smtp.web.de` (oder Resend/Postmark/etc.) |
-| `SMTP_PORT` | `587` |
-| `SMTP_SECURE` | `false` |
-| `SMTP_USER` | Mail-Adresse |
-| `SMTP_PASS` | App-Passwort |
-| `SMTP_FROM` | `"Restaurant-Name <reservierung@…>"` |
+| `TZ` | `Europe/Berlin` |
+| `BREVO_API_KEY` | **E-Mail auf Render: Brevo statt SMTP** (siehe unten) |
+| `SMTP_FROM` | Absender, z. B. `"Ristorante Bella Vista <adresse@gmail.com>"` |
 
-`NODE_ENV=production` und `PORT=3001` sind in `render.yaml` schon gesetzt.
+> ⚠️ **Wichtig:** Render blockt ausgehendes **SMTP** (Port 587/465 laufen in
+> „Connection timeout"). Gmail-/SMTP-Versand funktioniert auf Render **nicht**
+> zuverlässig. Auf Render daher **`BREVO_API_KEY`** setzen (HTTP-API über Port
+> 443) — dann werden die `SMTP_*`-Variablen ignoriert. SMTP nur lokal nutzen.
+
+`NODE_ENV=production`, `PORT=3001` und `TZ=Europe/Berlin` sind in `render.yaml` schon vorbelegt.
 
 ---
 
@@ -96,25 +98,31 @@ Im Service-Dashboard → **Environment**:
 
 ---
 
-## 6. Mail-Setup für „landet überall im Posteingang"
+## 6. E-Mail auf Render: Brevo (kein eigene Domain nötig)
 
-Damit Bestätigungs-Mails nicht im Spam landen — **egal welcher Empfänger-Provider**:
+Render blockt SMTP → Versand läuft über die **Brevo HTTP-API**. Setup (~5 Min):
 
-1. **Eigene Domain** des Restaurants (z. B. `bellavista.de`)
-2. Account bei **[Resend](https://resend.com)** (3 000 Mails/Monat gratis) oder **Postmark**
-3. Domain in Resend verifizieren → Resend zeigt **DNS-Records** an
-4. **SPF, DKIM, DMARC** beim Domain-Provider eintragen (Copy-Paste)
-5. SMTP-Daten in Render setzen:
+1. Kostenlosen Account bei **[Brevo](https://www.brevo.com)** anlegen (300 Mails/Tag gratis)
+2. **Brevo → Settings → Senders**: die Absender-Adresse (z. B. die Gmail-Adresse
+   aus `SMTP_FROM`) hinzufügen und per Bestätigungsmail **verifizieren**
+   *(keine eigene Domain erforderlich)*
+3. **Brevo → SMTP & API → API Keys**: neuen API-Key erzeugen (`xkeysib-…`)
+4. In Render → Environment setzen:
    ```
-   SMTP_HOST=smtp.resend.com
-   SMTP_PORT=587
-   SMTP_USER=resend
-   SMTP_PASS=<API-Key von Resend>
-   SMTP_FROM=reservierung@bellavista.de
+   BREVO_API_KEY=xkeysib-…
+   SMTP_FROM="Ristorante Bella Vista <adresse@gmail.com>"   # = verifizierter Sender
+   REPLY_TO=adresse@gmail.com
    ```
-6. Test-Mail an Web.de + Gmail + Outlook → muss überall im Posteingang landen
+5. Render redeployt → im Log muss `✅ Brevo aktiv (Absender …)` stehen
+6. Testreservierung → Bestätigungsmail muss ankommen
 
-Ohne diese Schritte: Web.de-/Outlook-Empfänger landen oft im Spam.
+Sobald `BREVO_API_KEY` gesetzt ist, werden die `SMTP_*`-Variablen ignoriert.
+Lokal (ohne SMTP-Block) kann weiter SMTP genutzt werden — einfach `BREVO_API_KEY`
+in der lokalen `.env` weglassen.
+
+**Beste Zustellbarkeit (optional, mit eigener Domain):** Domain in Brevo
+verifizieren und **SPF/DKIM/DMARC**-DNS-Records beim Domain-Provider eintragen —
+dann landen Mails auch bei Web.de/Outlook sicher im Posteingang.
 
 ---
 

@@ -22,17 +22,45 @@ function getTransporter(): Transporter | null {
   return transporter;
 }
 
+/** Parst SMTP_FROM ("Name <mail@x.de>" oder "mail@x.de") in { name, email }. */
+function parseFrom(): { name: string; email: string } {
+  const raw = (process.env.SMTP_FROM || process.env.BREVO_FROM || process.env.SMTP_USER || '').trim();
+  const m = raw.match(/^\s*"?([^"<]*?)"?\s*<\s*([^>]+)\s*>\s*$/);
+  if (m) return { name: m[1].trim() || m[2].trim(), email: m[2].trim() };
+  return { name: raw || 'Restaurant', email: raw };
+}
+
 /**
- * Beim Serverstart aufrufen: prüft, ob SMTP korrekt konfiguriert ist, und
- * loggt das Ergebnis eindeutig (im Render-Log sofort sichtbar).
+ * Beim Serverstart aufrufen: prüft, ob ein E-Mail-Versandweg korrekt
+ * konfiguriert ist, und loggt das Ergebnis eindeutig (im Render-Log sichtbar).
  */
 export async function verifyEmailSetup(): Promise<void> {
+  // Bevorzugter Weg: Brevo HTTP-API (Port 443, von Plattformen nicht blockiert)
+  if (process.env.BREVO_API_KEY) {
+    try {
+      const r = await fetch('https://api.brevo.com/v3/account', {
+        headers: { 'api-key': process.env.BREVO_API_KEY, accept: 'application/json' },
+      });
+      if (r.ok) {
+        console.log(`✅ Brevo aktiv (Absender ${parseFrom().email}) – E-Mail-Versand über HTTP-API bereit.`);
+      } else {
+        console.error(
+          `❌ BREVO_API_KEY gesetzt, aber Brevo lehnt ihn ab (HTTP ${r.status}). ` +
+            `Mails werden NICHT versendet. API-Key im Render-Dashboard prüfen.`,
+        );
+      }
+    } catch (err: any) {
+      console.error(`❌ Brevo-Verbindung fehlgeschlagen: ${err.message}. Mails werden NICHT versendet.`);
+    }
+    return;
+  }
+
   const missing = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'].filter(k => !process.env[k]);
   if (missing.length > 0) {
     console.warn(
-      `⚠️  SMTP NICHT konfiguriert (fehlt: ${missing.join(', ')}). ` +
-        `Bestätigungs-/Erinnerungs-Mails werden NICHT versendet, nur geloggt. ` +
-        `→ Variablen im Render-Dashboard setzen.`,
+      `⚠️  Kein E-Mail-Versand konfiguriert (weder BREVO_API_KEY noch SMTP: fehlt ${missing.join(', ')}). ` +
+        `Mails werden NICHT versendet, nur geloggt. → Für Render BREVO_API_KEY setzen ` +
+        `(SMTP wird dort i.d.R. blockiert).`,
     );
     return;
   }
@@ -131,7 +159,44 @@ export async function sendCancellationConfirmation(p: CancellationParams): Promi
   await sendMail(p.customerEmail, subject, html, text);
 }
 
+/** Versand über Brevo HTTP-API (HTTPS/443 – wird von Render & Co. nicht blockiert). */
+async function sendViaBrevo(to: string, subject: string, html: string, text: string): Promise<void> {
+  const sender = parseFrom();
+  const replyToEmail = process.env.REPLY_TO || sender.email;
+  try {
+    const r = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': process.env.BREVO_API_KEY as string,
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify({
+        sender,
+        to: [{ email: to }],
+        replyTo: { email: replyToEmail },
+        subject,
+        htmlContent: html,
+        textContent: text,
+      }),
+    });
+    if (r.ok) {
+      console.log(`✉️  Email (Brevo) an ${to} gesendet: ${subject}`);
+    } else {
+      const body = await r.text().catch(() => '');
+      console.error(`❌ Brevo-Versand an ${to} fehlgeschlagen (HTTP ${r.status}): ${body}`);
+    }
+  } catch (err) {
+    console.error(`❌ Brevo-Versand an ${to} fehlgeschlagen:`, err);
+  }
+}
+
 async function sendMail(to: string, subject: string, html: string, text: string): Promise<void> {
+  if (process.env.BREVO_API_KEY) {
+    await sendViaBrevo(to, subject, html, text);
+    return;
+  }
+
   const t = getTransporter();
   const from = process.env.SMTP_FROM || process.env.SMTP_USER || 'noreply@example.com';
   const replyTo = process.env.REPLY_TO || process.env.SMTP_USER || from;
