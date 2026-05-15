@@ -32,24 +32,33 @@ router.post('/', async (req, res) => {
   const duration = durationFor(data.party_size, settings);
   const end = addMinutes(start, duration);
 
-  const check = await checkSlotAvailable(start, end, data.party_size);
-  if (!check.ok) {
-    const messages: Record<string, string> = {
-      too_large: `Für ${data.party_size} Personen können wir online keinen Tisch reservieren. Bitte rufen Sie uns an.`,
-      no_capacity: 'Dieser Zeitraum ist leider belegt. Bitte wählen Sie eine andere Uhrzeit.',
-      closed: 'Wir haben zu diesem Zeitpunkt geschlossen.',
-      too_late: 'Dieser Zeitpunkt liegt zu kurzfristig in der Zukunft.',
-      past: 'Dieser Zeitpunkt liegt in der Vergangenheit.',
-    };
-    res.status(409).json({ error: messages[check.reason!] || 'Reservierung nicht möglich', reason: check.reason });
-    return;
-  }
+  const messages: Record<string, string> = {
+    too_large: `Für ${data.party_size} Personen können wir online keinen Tisch reservieren. Bitte rufen Sie uns an.`,
+    no_capacity: 'Dieser Zeitraum ist leider belegt. Bitte wählen Sie eine andere Uhrzeit.',
+    closed: 'Wir haben zu diesem Zeitpunkt geschlossen.',
+    too_late: 'Dieser Zeitpunkt liegt zu kurzfristig in der Zukunft.',
+    past: 'Dieser Zeitpunkt liegt in der Vergangenheit.',
+  };
 
   const db = getDb();
   const cancellationToken = uuidv4();
+  const client = await db.connect();
 
   try {
-    const insertRes = await db.query(
+    // Buchungen serialisieren: Verfügbarkeitsprüfung + INSERT laufen unter einem
+    // Transaktions-Advisory-Lock, damit zwei gleichzeitige Anfragen nicht
+    // denselben letzten freien Tisch doppelt buchen.
+    await client.query('BEGIN');
+    await client.query('SELECT pg_advisory_xact_lock($1)', [4711]);
+
+    const check = await checkSlotAvailable(start, end, data.party_size);
+    if (!check.ok) {
+      await client.query('ROLLBACK');
+      res.status(409).json({ error: messages[check.reason!] || 'Reservierung nicht möglich', reason: check.reason });
+      return;
+    }
+
+    const insertRes = await client.query(
       `INSERT INTO reservations
          (customer_name, customer_email, customer_phone, party_size, start_time, end_time,
           table_ids, status, walk_in, notes, cancellation_token)
@@ -67,6 +76,7 @@ router.post('/', async (req, res) => {
         cancellationToken,
       ],
     );
+    await client.query('COMMIT');
 
     const reservationId = insertRes.rows[0].id;
 
@@ -91,8 +101,11 @@ router.post('/', async (req, res) => {
       combined: check.combined,
     });
   } catch (err) {
+    try { await client.query('ROLLBACK'); } catch {}
     console.error('reservation insert error', err);
     res.status(500).json({ error: 'Reservierung konnte nicht gespeichert werden' });
+  } finally {
+    client.release();
   }
 });
 

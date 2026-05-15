@@ -11,6 +11,10 @@ interface CommonContext {
   restaurantMapsUrl: string;
 }
 
+// Restaurant-Zeitzone – fest, damit E-Mail-Zeiten unabhängig von der
+// Server-Zeitzone (Render läuft in UTC) korrekt in Lokalzeit angezeigt werden.
+const RESTAURANT_TZ = process.env.TZ || 'Europe/Berlin';
+
 function fmtDateTime(d: Date): string {
   return new Intl.DateTimeFormat('de-DE', {
     weekday: 'long',
@@ -19,6 +23,7 @@ function fmtDateTime(d: Date): string {
     year: 'numeric',
     hour: '2-digit',
     minute: '2-digit',
+    timeZone: RESTAURANT_TZ,
   }).format(d);
 }
 
@@ -28,11 +33,16 @@ function fmtDate(d: Date): string {
     day: '2-digit',
     month: 'long',
     year: 'numeric',
+    timeZone: RESTAURANT_TZ,
   }).format(d);
 }
 
 function fmtTime(d: Date): string {
-  return new Intl.DateTimeFormat('de-DE', { hour: '2-digit', minute: '2-digit' }).format(d);
+  return new Intl.DateTimeFormat('de-DE', {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: RESTAURANT_TZ,
+  }).format(d);
 }
 
 function escape(s: string): string {

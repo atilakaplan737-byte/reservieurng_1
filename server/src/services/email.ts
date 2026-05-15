@@ -22,6 +22,33 @@ function getTransporter(): Transporter | null {
   return transporter;
 }
 
+/**
+ * Beim Serverstart aufrufen: prüft, ob SMTP korrekt konfiguriert ist, und
+ * loggt das Ergebnis eindeutig (im Render-Log sofort sichtbar).
+ */
+export async function verifyEmailSetup(): Promise<void> {
+  const missing = ['SMTP_HOST', 'SMTP_USER', 'SMTP_PASS'].filter(k => !process.env[k]);
+  if (missing.length > 0) {
+    console.warn(
+      `⚠️  SMTP NICHT konfiguriert (fehlt: ${missing.join(', ')}). ` +
+        `Bestätigungs-/Erinnerungs-Mails werden NICHT versendet, nur geloggt. ` +
+        `→ Variablen im Render-Dashboard setzen.`,
+    );
+    return;
+  }
+  const t = getTransporter();
+  if (!t) return;
+  try {
+    await t.verify();
+    console.log(`✅ SMTP aktiv (${process.env.SMTP_HOST} als ${process.env.SMTP_USER}) – E-Mail-Versand bereit.`);
+  } catch (err: any) {
+    console.error(
+      `❌ SMTP konfiguriert, aber Verbindung/Login fehlgeschlagen: ${err.message}. ` +
+        `Mails werden NICHT versendet. App-Passwort & SMTP_* im Render-Dashboard prüfen.`,
+    );
+  }
+}
+
 function getBaseUrl(): string {
   return (process.env.BASE_URL || 'http://localhost:5173').trim().replace(/\/+$/, '');
 }

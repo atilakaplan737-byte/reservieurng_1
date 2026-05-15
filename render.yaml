@@ -10,6 +10,10 @@ services:
         value: production
       - key: PORT
         value: 3001
+      # Server-Zeitzone – MUSS gesetzt sein, sonst laufen Render-Container in UTC
+      # und alle Uhrzeiten (Öffnungszeiten, Buchungen, E-Mails) sind verschoben.
+      - key: TZ
+        value: Europe/Berlin
       # Müssen im Render-Dashboard manuell gesetzt werden:
       - key: DATABASE_URL
         sync: false

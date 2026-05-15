@@ -135,9 +135,13 @@ Render → **Settings** → **Custom Domain**:
 
 Render Free Tier schläft nach **15 Min ohne Traffic** ein:
 - Erste Request danach: ~30 Sek Wartezeit
+- ⚠️ **Wichtig:** Während des Schlafs laufen die internen Cronjobs (E-Mail-Erinnerungen
+  24h/4h vorher, Session-Cleanup) **nicht**. Ohne Keep-Alive werden Erinnerungen
+  unzuverlässig versendet.
 - Optionen:
-  - **Starter Plan ($7/Monat)** → kein Sleep, schnellere Cold-Starts
-  - **Cron-Ping** alle 10 Min auf `/api/info` (z. B. via [cron-job.org](https://cron-job.org))
+  - **Starter Plan ($7/Monat)** → kein Sleep, Cronjobs laufen zuverlässig
+  - **Cron-Ping** alle 10 Min auf `/api/health` (z. B. via [cron-job.org](https://cron-job.org)) →
+    hält den Service wach, damit die Reminder-Cronjobs feuern
   - Für Demo erstmal Free → bei echtem Verkauf Starter
 
 ---

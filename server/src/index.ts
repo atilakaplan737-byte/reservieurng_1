@@ -3,6 +3,7 @@ import path from 'path';
 dotenv.config({ path: path.resolve(__dirname, '../../.env') });
 
 import express from 'express';
+import 'express-async-errors'; // leitet abgelehnte Promises aus async-Handlern an die Error-Middleware
 import cors from 'cors';
 import cron from 'node-cron';
 import { initDb, getDb } from './db/database';
@@ -11,12 +12,17 @@ import availabilityRouter from './routes/availability';
 import reservationsRouter from './routes/reservations';
 import adminRouter from './routes/admin';
 import { processReminders } from './services/reminders';
+import { verifyEmailSetup } from './services/email';
 
 const app = express();
 const PORT = parseInt(process.env.PORT || '3001');
 
 app.use(cors());
 app.use(express.json({ limit: '256kb' }));
+
+// Health-Check – auch als Ziel für einen externen Keep-Alive-Ping (Render Free
+// schläft sonst ein und die Reminder-/Cleanup-Cronjobs laufen nicht).
+app.get('/api/health', (_req, res) => res.json({ ok: true, time: new Date().toISOString() }));
 
 app.use('/api/info', infoRouter);
 app.use('/api/availability', availabilityRouter);
@@ -77,6 +83,7 @@ initDb()
     app.listen(PORT, () => {
       console.log(`\n🚀 Server läuft auf http://localhost:${PORT}`);
       console.log(`📍 ${process.env.RESTAURANT_NAME || 'Restaurant'}\n`);
+      verifyEmailSetup().catch(() => {});
     });
   })
   .catch(err => {
